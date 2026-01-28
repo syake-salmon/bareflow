@@ -8,6 +8,7 @@ import java.util.Map;
 
 import io.github.ss.bareflow.core.context.ExecutionContext;
 import io.github.ss.bareflow.core.engine.StepEvaluator;
+import io.github.ss.bareflow.core.exception.StepExecutionException;
 
 public class DefaultStepEvaluator implements StepEvaluator {
     @Override
@@ -53,6 +54,11 @@ public class DefaultStepEvaluator implements StepEvaluator {
         }
 
         String key = value.substring(2, value.length() - 1);
+
+        if (key.isEmpty()) {
+            throw new StepExecutionException("Empty context reference: ${}");
+        }
+
         if (!ctx.contains(key)) {
             throw new StepExecutionException("Context key not found: " + key);
         }
