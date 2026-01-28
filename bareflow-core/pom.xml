@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <!-- ===== Parent ===== -->
+    <parent>
+        <groupId>io.github.syake-salmon</groupId>
+        <artifactId>bareflow-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+    <!-- ===== Module Metadata ===== -->
+    <artifactId>bareflow-core</artifactId>
+    <name>BareFlow Core</name>
+    <description>Minimal, deterministic flow execution engine for BareFlow.</description>
+    <packaging>jar</packaging>
+    <!-- ===== Dependencies ===== -->
+    <dependencies>
+        <!-- SLF4J API -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <!-- JUnit -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    <!-- ===== Build ===== -->
+    <build>
+        <plugins>
+            <!-- Surefire -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
