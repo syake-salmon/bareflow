@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <!-- ===== Parent ===== -->
+    <parent>
+        <groupId>io.github.syake-salmon</groupId>
+        <artifactId>bareflow-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+    <!-- ===== Project Metadata ===== -->
+    <artifactId>bareflow-runtime</artifactId>
+    <name>BareFlow Runtime</name>
+    <description>Runtime utilities for BareFlow: YAML parsing, module resolution, and execution helpers.</description>
+    <!-- ===== Dependencies ===== -->
+    <dependencies>
+        <!-- Core Engine -->
+        <dependency>
+            <groupId>io.github.syake-salmon</groupId>
+            <artifactId>bareflow-core</artifactId>
+        </dependency>
+        <!-- YAML Parser (SnakeYAML Engine) -->
+        <dependency>
+            <groupId>org.snakeyaml</groupId>
+            <artifactId>snakeyaml-engine</artifactId>
+        </dependency>
+        <!-- SLF4J API -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <!-- JUnit -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
