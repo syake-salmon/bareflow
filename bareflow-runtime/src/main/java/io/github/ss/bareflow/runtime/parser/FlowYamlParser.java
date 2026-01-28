@@ -93,7 +93,6 @@ public class FlowYamlParser {
     /**
      * Parse retry policy block.
      */
-    @SuppressWarnings("unchecked")
     private RetryPolicy parseRetryPolicy(Map<String, Object> raw) {
         if (raw == null) {
             return null;
