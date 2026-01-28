@@ -17,6 +17,13 @@ import java.util.Map;
 /**
  * Formal implementation of BareFlow's execution engine.
  * Executes steps sequentially with retry and onError handling.
+ *
+ * This engine is pure and depends only on core abstractions:
+ * - StepEvaluator
+ * - StepInvoker
+ * - Definition models
+ * - ExecutionContext
+ * - StepTrace
  */
 public class FlowEngine {
     private final StepEvaluator evaluator;
@@ -28,16 +35,16 @@ public class FlowEngine {
     }
 
     /**
-     * Execute a flow with an initial context.
+     * Execute a flow using the given context and trace.
+     *
+     * @param flow  flow definition
+     * @param ctx   execution context
+     * @param trace step trace collector
      */
-    public StepTrace execute(FlowDefinition flow, ExecutionContext ctx) {
-        StepTrace trace = new StepTrace();
-
+    public void execute(FlowDefinition flow, ExecutionContext ctx, StepTrace trace) {
         for (StepDefinition step : flow.getSteps()) {
             executeStepWithControl(flow, step, ctx, trace);
         }
-
-        return trace;
     }
 
     /**
@@ -59,19 +66,19 @@ public class FlowEngine {
 
             try {
                 // 1. Evaluate input
-                Map<String, Object> evaluatedInput = evaluator.evaluate(step.getInput(), ctx);
+                Map<String, Object> evaluatedInput = evaluator.evaluateInput(step.getInput(), ctx);
 
                 // 2. Invoke module operation
                 Map<String, Object> output = invoker.invoke(step.getModule(), step.getOperation(), evaluatedInput);
 
                 // 3. Merge output into context
-                if (step.getOutput() != null) {
+                if (!step.getOutput().isEmpty()) {
                     ctx.merge(output);
                 }
 
                 // 4. Record success trace
                 trace.record(new StepTraceEntry(
-                        step.getId(),
+                        step.getName(),
                         before,
                         evaluatedInput,
                         output,
@@ -91,7 +98,7 @@ public class FlowEngine {
                 // System errors may be retried
                 if (retryPolicy != null && attempts <= retryPolicy.getMaxAttempts()) {
                     sleep(retryPolicy.getBackoffMillis());
-                    continue; // retry
+                    continue;
                 }
 
                 recordError(trace, step, before, se, start);
@@ -135,7 +142,6 @@ public class FlowEngine {
                 return;
 
             case RETRY:
-                // RETRY here means "retry once regardless of retryPolicy"
                 sleep(onError.getDelayMillis());
                 return;
 
@@ -154,7 +160,7 @@ public class FlowEngine {
             Instant start) {
 
         trace.record(new StepTraceEntry(
-                step.getId(),
+                step.getName(),
                 before,
                 null,
                 null,

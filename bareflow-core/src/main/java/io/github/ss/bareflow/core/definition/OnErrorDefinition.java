@@ -1,7 +1,11 @@
 package io.github.ss.bareflow.core.definition;
 
+import java.util.Collections;
+import java.util.Map;
+
 /**
- * Error handling behavior for a flow or step.
+ * Error handling definition for a step or flow.
+ * Immutable model representing onError behavior.
  */
 public class OnErrorDefinition {
     public enum Action {
@@ -12,13 +16,17 @@ public class OnErrorDefinition {
 
     private final Action action;
     private final long delayMillis;
+    private final Map<String, Object> output;
 
-    public OnErrorDefinition(Action action, long delayMillis) {
-        if (action == null) {
-            throw new IllegalArgumentException("action must not be null");
-        }
-        this.action = action;
-        this.delayMillis = Math.max(0, delayMillis);
+    public OnErrorDefinition(String action,
+            long delayMillis,
+            Map<String, Object> output) {
+
+        this.action = Action.valueOf(action);
+        this.delayMillis = delayMillis;
+        this.output = output == null
+                ? Collections.emptyMap()
+                : Collections.unmodifiableMap(output);
     }
 
     public Action getAction() {
@@ -27,5 +35,9 @@ public class OnErrorDefinition {
 
     public long getDelayMillis() {
         return delayMillis;
+    }
+
+    public Map<String, Object> getOutput() {
+        return output;
     }
 }

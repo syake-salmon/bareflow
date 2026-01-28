@@ -1,43 +1,33 @@
 package io.github.ss.bareflow.core.definition;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
  * Flow-level definition.
- * Immutable model representing a whole flow.
+ * Immutable model representing an entire flow.
  */
 public class FlowDefinition {
-    private final String id;
-    private final String description;
-    private final OnErrorDefinition onError;
+    private final String name;
     private final List<StepDefinition> steps;
+    private final OnErrorDefinition onError; // optional flow-level default
 
-    public FlowDefinition(String id,
-            String description,
-            OnErrorDefinition onError,
-            List<StepDefinition> steps) {
-        this.id = id;
-        this.description = description;
+    public FlowDefinition(String name,
+            List<StepDefinition> steps,
+            OnErrorDefinition onError) {
+        this.name = name;
+        this.steps = List.copyOf(steps);
         this.onError = onError;
-        this.steps = steps == null
-                ? Collections.emptyList()
-                : Collections.unmodifiableList(steps);
     }
 
-    public String getId() {
-        return id;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public OnErrorDefinition getOnError() {
-        return onError;
+    public String getName() {
+        return name;
     }
 
     public List<StepDefinition> getSteps() {
         return steps;
+    }
+
+    public OnErrorDefinition getOnError() {
+        return onError;
     }
 }

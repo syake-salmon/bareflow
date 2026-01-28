@@ -8,38 +8,42 @@ import java.util.Map;
  * Immutable model representing a single step in a flow.
  */
 public class StepDefinition {
-    private final String id;
+    private final String name;
     private final String module;
     private final String operation;
 
     private final Map<String, Object> input;
-    private final Map<String, String> output;
+    private final Map<String, Object> output;
 
     private final RetryPolicy retryPolicy;
     private final OnErrorDefinition onError;
 
-    public StepDefinition(String id,
+    public StepDefinition(String name,
             String module,
             String operation,
             Map<String, Object> input,
-            Map<String, String> output,
+            Map<String, Object> output,
             RetryPolicy retryPolicy,
             OnErrorDefinition onError) {
-        this.id = id;
+
+        this.name = name;
         this.module = module;
         this.operation = operation;
+
         this.input = input == null
                 ? Collections.emptyMap()
                 : Collections.unmodifiableMap(input);
+
         this.output = output == null
                 ? Collections.emptyMap()
                 : Collections.unmodifiableMap(output);
+
         this.retryPolicy = retryPolicy;
         this.onError = onError;
     }
 
-    public String getId() {
-        return id;
+    public String getName() {
+        return name;
     }
 
     public String getModule() {
@@ -54,7 +58,7 @@ public class StepDefinition {
         return input;
     }
 
-    public Map<String, String> getOutput() {
+    public Map<String, Object> getOutput() {
         return output;
     }
 
