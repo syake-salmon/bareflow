@@ -11,6 +11,14 @@
     <name>BareFlow Parent</name>
     <description>Minimal core. Maximum clarity. A specification-driven flow engine.</description>
     <url>https://github.com/syake-salmon/BareFlow</url>
+    <developers>
+        <developer>
+            <name>syake-salmon</name>
+            <email>syakeapps@icloud.com</email>
+            <organization>syakeApps</organization>
+            <organizationUrl>https://syake-salmon.github.io/</organizationUrl>
+        </developer>
+    </developers>
     <!-- ===== License ===== -->
     <licenses>
         <license>
@@ -64,7 +72,7 @@
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter</artifactId>
-                <version>6.0.2</version>
+                <version>5.14.2</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
@@ -73,7 +81,9 @@
     <build>
         <pluginManagement>
             <plugins>
-                <!-- Compiler Plugin -->
+                <!-- ===== Clean ===== -->
+                <!-- ===== Validate ===== -->
+                <!-- ===== Compile ===== -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
@@ -83,7 +93,7 @@
                         <target>${maven.compiler.target}</target>
                     </configuration>
                 </plugin>
-                <!-- Surefire -->
+                <!-- ===== Test ===== -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
@@ -91,6 +101,88 @@
                     <configuration>
                         <useModulePath>false</useModulePath>
                     </configuration>
+                </plugin>
+                <!-- ===== Package ===== -->
+                <plugin>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.4.0</version>
+                    <executions>
+                        <execution>
+                            <id>attach-sources</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>jar</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.12.0</version>
+                    <configuration>
+                        <additionalOptions>
+                            <additionalOption>-Xdoclint:none</additionalOption>
+                        </additionalOptions>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>jar</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <!-- ===== Integration-Test ===== -->
+                <!-- ===== Verify ===== -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>3.1.0</version>
+                    <executions>
+                        <execution>
+                            <id>sign-artifacts</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>sign</goal>
+                            </goals>
+                            <configuration>
+                                <bestPractices>true</bestPractices>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+                <!-- ===== Install ===== -->
+                <!-- ===== Deploy ===== -->
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>0.10.0</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <publishingServerId>central</publishingServerId>
+                    </configuration>
+                </plugin>
+                <!-- ===== Site ===== -->
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>0.8.14</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>report</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
