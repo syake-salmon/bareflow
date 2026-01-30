@@ -34,5 +34,5 @@ jobs:
           MAVEN_GPG_KEY: ${{ secrets.MAVEN_GPG_KEY }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
           MAVEN_GPG_KEY_FINGERPRINT: ${{ secrets.MAVEN_GPG_KEY_FINGERPRINT }}
-          SONATYPE_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          SONATYPE_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
