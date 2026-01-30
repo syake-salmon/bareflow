@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <!-- ===== Parent ===== -->
     <parent>
-        <groupId>io.github.syake-salmon</groupId>
+        <groupId>run.bareflow</groupId>
         <artifactId>bareflow-parent</artifactId>
         <version>1.0.0</version>
     </parent>
@@ -18,7 +18,7 @@
     <dependencies>
         <!-- BareFlow Core -->
         <dependency>
-            <groupId>io.github.syake-salmon</groupId>
+            <groupId>${project.parent.groupId}</groupId>
             <artifactId>bareflow-core</artifactId>
             <version>${project.version}</version>
         </dependency>
