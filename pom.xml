@@ -147,7 +147,10 @@
                             <goal>sign</goal>
                         </goals>
                         <configuration>
-                            <bestPractices>true</bestPractices>
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
                         </configuration>
                     </execution>
                 </executions>
@@ -159,10 +162,6 @@
                 <artifactId>central-publishing-maven-plugin</artifactId>
                 <version>0.10.0</version>
                 <extensions>true</extensions>
-                <configuration>
-                    <username>${env.MAVEN_CENTRAL_USERNAME}</username>
-                    <token>${env.MAVEN_CENTRAL_PASSWORD}</token>
-                </configuration>
             </plugin>
             <!-- ===== Site ===== -->
             <plugin>
