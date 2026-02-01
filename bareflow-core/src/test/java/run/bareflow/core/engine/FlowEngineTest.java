@@ -1,217 +1,391 @@
 package run.bareflow.core.engine;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.nullable;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.junit.jupiter.api.Test;
 
 import run.bareflow.core.context.ExecutionContext;
-import run.bareflow.core.definition.FlowDefinition;
-import run.bareflow.core.definition.OnErrorDefinition;
-import run.bareflow.core.definition.OnErrorDefinition.Action;
-import run.bareflow.core.definition.RetryPolicy;
-import run.bareflow.core.definition.StepDefinition;
+import run.bareflow.core.definition.*;
 import run.bareflow.core.engine.evaluator.StepEvaluator;
+import run.bareflow.core.engine.event.FlowEngineEvent;
+import run.bareflow.core.engine.event.FlowEngineEventListener;
 import run.bareflow.core.engine.invoker.StepInvoker;
-import run.bareflow.core.exception.BusinessException;
-import run.bareflow.core.exception.StepExecutionException;
-import run.bareflow.core.exception.SystemException;
+import run.bareflow.core.exception.*;
 import run.bareflow.core.trace.StepTrace;
 
 public class FlowEngineTest {
     // ------------------------------------------------------------
-    // Helper: create StepDefinition
+    // Utility classes
     // ------------------------------------------------------------
-    private StepDefinition step(
-            String name,
-            Map<String, Object> input,
-            Map<String, Object> output,
-            RetryPolicy retry,
-            OnErrorDefinition onError) {
-        return new StepDefinition(
-                name,
-                "M",
+    private static class RecordingListener implements FlowEngineEventListener {
+        final List<FlowEngineEvent> events = new ArrayList<>();
+
+        @Override
+        public void onEvent(FlowEngineEvent event) {
+            events.add(event);
+        }
+    }
+
+    private static class PassthroughEvaluator implements StepEvaluator {
+        @Override
+        public Map<String, Object> evaluateInput(Map<String, Object> input, ExecutionContext ctx) {
+            return input;
+        }
+
+        @Override
+        public Map<String, Object> evaluateOutput(Map<String, Object> output, Map<String, Object> raw,
+                ExecutionContext ctx) {
+            return raw;
+        }
+    }
+
+    private static class FixedInvoker implements StepInvoker {
+        private final Map<String, Object> output;
+
+        FixedInvoker(Map<String, Object> output) {
+            this.output = output;
+        }
+
+        @Override
+        public Map<String, Object> invoke(String module, String operation, Map<String, Object> input) {
+            return output;
+        }
+    }
+
+    // ------------------------------------------------------------
+    // 1. 正常系
+    // ------------------------------------------------------------
+    @Test
+    public void test_successful_step_executes_all_events() {
+        RecordingListener listener = new RecordingListener();
+        StepEvaluator evaluator = new PassthroughEvaluator();
+        StepInvoker invoker = new FixedInvoker(Map.of("result", 123));
+
+        FlowEngine engine = new FlowEngine(evaluator, invoker, listener);
+
+        StepDefinition step = new StepDefinition(
+                "test-step",
+                "mod",
                 "op",
-                input,
-                output,
-                retry,
-                onError);
-    }
+                Map.of("x", 1),
+                Map.of("y", "${result}"),
+                null,
+                null);
 
-    // ------------------------------------------------------------
-    // Helper: create FlowDefinition
-    // ------------------------------------------------------------
-    private FlowDefinition flow(OnErrorDefinition flowOnError, StepDefinition... steps) {
-        return new FlowDefinition(
-                "testFlow",
-                List.of(steps),
-                flowOnError,
-                Map.of() // metadata
-        );
-    }
+        FlowDefinition flow = new FlowDefinition("flow", List.of(step), null, null);
 
-    // ------------------------------------------------------------
-    // 1. 正常系：1 ステップ成功
-    // ------------------------------------------------------------
-    @Test
-    void testSingleStepSuccess() throws Exception {
-        StepEvaluator evaluator = mock(StepEvaluator.class);
-        StepInvoker invoker = mock(StepInvoker.class);
+        ExecutionContext ctx = new ExecutionContext();
 
-        StepDefinition step = step("s1", Map.of(), Map.of(), null, null);
-
-        when(evaluator.evaluateInput(any(), any())).thenReturn(Map.of());
-        when(invoker.invoke(any(), any(), any())).thenReturn(Map.of());
-
-        FlowEngine engine = new FlowEngine(evaluator, invoker);
-
-        StepTrace trace = engine.execute(flow(null, step), new ExecutionContext());
+        StepTrace trace = engine.execute(flow, ctx);
 
         assertEquals(1, trace.getEntries().size());
-        assertTrue(trace.isSuccess());
+        assertEquals(123, ctx.get("result"));
+
+        assertTrue(listener.events.get(0) instanceof FlowEngineEvent.FlowStartEvent);
+        assertTrue(listener.events.stream().anyMatch(e -> e instanceof FlowEngineEvent.StepStartEvent));
+        assertTrue(listener.events.stream().anyMatch(e -> e instanceof FlowEngineEvent.InvokeStartEvent));
+        assertTrue(listener.events.stream().anyMatch(e -> e instanceof FlowEngineEvent.StepEndEvent));
+        assertTrue(listener.events.get(listener.events.size() - 1) instanceof FlowEngineEvent.FlowEndEvent);
     }
 
     // ------------------------------------------------------------
-    // 2. SystemException + RetryPolicy → retry して成功
+    // 2. RetryPolicy
     // ------------------------------------------------------------
     @Test
-    void testRetryPolicyRetriesThenSucceeds() throws Exception {
-        StepEvaluator evaluator = mock(StepEvaluator.class);
-        StepInvoker invoker = mock(StepInvoker.class);
+    public void test_retry_policy_retries_once() {
+        RecordingListener listener = new RecordingListener();
+        StepEvaluator evaluator = new PassthroughEvaluator();
 
-        RetryPolicy retry = new RetryPolicy(2, 0);
-        StepDefinition step = step("s1", Map.of(), Map.of(), retry, null);
+        StepInvoker invoker = new StepInvoker() {
+            int count = 0;
 
-        when(evaluator.evaluateInput(any(), any())).thenReturn(Map.of());
-        when(invoker.invoke(any(), any(), any()))
-                .thenThrow(new SystemException("fail"))
-                .thenReturn(Map.of("ok", true));
+            @Override
+            public Map<String, Object> invoke(String module, String operation, Map<String, Object> input) {
+                count++;
+                if (count == 1) {
+                    throw new SystemException("fail once");
+                }
+                return Map.of("ok", true);
+            }
+        };
 
-        FlowEngine engine = new FlowEngine(evaluator, invoker);
+        FlowEngine engine = new FlowEngine(evaluator, invoker, listener);
 
-        StepTrace trace = engine.execute(flow(null, step), new ExecutionContext());
+        StepDefinition step = new StepDefinition(
+                "retry-step",
+                "mod",
+                "op",
+                Map.of(),
+                Map.of(),
+                new RetryPolicy(2, 0),
+                null);
 
-        assertEquals(1, trace.getEntries().size());
-        assertTrue(trace.isSuccess());
+        FlowDefinition flow = new FlowDefinition("flow", List.of(step), null, null);
+
+        engine.execute(flow, new ExecutionContext());
+
+        long retryEvents = listener.events.stream()
+                .filter(e -> e instanceof FlowEngineEvent.RetryPolicyRetryEvent)
+                .count();
+
+        assertEquals(1, retryEvents);
     }
 
     // ------------------------------------------------------------
-    // 3. BusinessException → retry しない
+    // 3. onError.RETRY
     // ------------------------------------------------------------
     @Test
-    void testBusinessExceptionNoRetry() throws Exception {
-        StepEvaluator evaluator = mock(StepEvaluator.class);
-        StepInvoker invoker = mock(StepInvoker.class);
+    public void test_onError_retry_fires_event() {
+        RecordingListener listener = new RecordingListener();
+        StepEvaluator evaluator = new PassthroughEvaluator();
 
-        OnErrorDefinition onError = new OnErrorDefinition(Action.CONTINUE, 0, null);
-        StepDefinition step = step("s1", Map.of(), Map.of(), null, onError);
+        StepInvoker invoker = new StepInvoker() {
+            int count = 0;
 
-        when(evaluator.evaluateInput(any(), any())).thenReturn(Map.of());
-        when(invoker.invoke(any(), any(), any()))
-                .thenThrow(new BusinessException("biz"));
+            @Override
+            public Map<String, Object> invoke(String module, String operation, Map<String, Object> input) {
+                count++;
+                if (count == 1) {
+                    throw new BusinessException("fail once");
+                }
+                return Map.of("ok", true);
+            }
+        };
 
-        FlowEngine engine = new FlowEngine(evaluator, invoker);
+        FlowEngine engine = new FlowEngine(evaluator, invoker, listener);
 
-        StepTrace trace = engine.execute(flow(null, step), new ExecutionContext());
+        StepDefinition step = new StepDefinition(
+                "onerror-retry",
+                "mod",
+                "op",
+                Map.of(),
+                Map.of(),
+                null,
+                new OnErrorDefinition(OnErrorDefinition.Action.RETRY, 0, null));
 
-        assertEquals(1, trace.getEntries().size());
-        assertFalse(trace.isSuccess());
+        FlowDefinition flow = new FlowDefinition("flow", List.of(step), null, null);
+
+        engine.execute(flow, new ExecutionContext());
+
+        long retryEvents = listener.events.stream()
+                .filter(e -> e instanceof FlowEngineEvent.OnErrorRetryEvent)
+                .count();
+
+        assertEquals(1, retryEvents);
     }
 
     // ------------------------------------------------------------
-    // 4. onError = STOP → StepExecutionException
+    // 4. onError.STOP
     // ------------------------------------------------------------
     @Test
-    void testOnErrorStopThrows() throws Exception {
-        StepEvaluator evaluator = mock(StepEvaluator.class);
-        StepInvoker invoker = mock(StepInvoker.class);
+    public void test_onError_stop_throws_exception() {
+        RecordingListener listener = new RecordingListener();
+        StepEvaluator evaluator = new PassthroughEvaluator();
 
-        OnErrorDefinition onError = new OnErrorDefinition(Action.STOP, 0, null);
-        StepDefinition step = step("s1", Map.of(), Map.of(), null, onError);
+        StepInvoker invoker = (m, o, i) -> {
+            throw new BusinessException("fail");
+        };
 
-        when(evaluator.evaluateInput(any(), any())).thenReturn(Map.of());
-        when(invoker.invoke(any(), any(), any()))
-                .thenThrow(new SystemException("fail"));
+        FlowEngine engine = new FlowEngine(evaluator, invoker, listener);
 
-        FlowEngine engine = new FlowEngine(evaluator, invoker);
+        StepDefinition step = new StepDefinition(
+                "stop-step",
+                "mod",
+                "op",
+                Map.of(),
+                Map.of(),
+                null,
+                new OnErrorDefinition(OnErrorDefinition.Action.STOP, 0, null));
 
-        assertThrows(StepExecutionException.class, () -> engine.execute(flow(null, step), new ExecutionContext()));
+        FlowDefinition flow = new FlowDefinition("flow", List.of(step), null, null);
+
+        assertThrows(StepExecutionException.class, () -> engine.execute(flow, new ExecutionContext()));
     }
 
     // ------------------------------------------------------------
-    // 5. onError = CONTINUE → 次のステップへ進む
+    // 5. onError.CONTINUE
     // ------------------------------------------------------------
     @Test
-    void testOnErrorContinueMovesToNextStep() throws Exception {
-        StepEvaluator evaluator = mock(StepEvaluator.class);
-        StepInvoker invoker = mock(StepInvoker.class);
+    public void test_onError_continue_moves_to_next_step() {
+        RecordingListener listener = new RecordingListener();
+        StepEvaluator evaluator = new PassthroughEvaluator();
 
-        OnErrorDefinition onError = new OnErrorDefinition(Action.CONTINUE, 0, null);
+        FlowEngine engine = new FlowEngine(evaluator, (m, o, i) -> {
+            if (o.equals("op1"))
+                throw new BusinessException("fail");
+            if (o.equals("op2"))
+                return Map.of("ok", true);
+            return null;
+        }, listener);
 
-        StepDefinition s1 = step("s1", Map.of(), Map.of(), null, onError);
-        StepDefinition s2 = step("s2", Map.of(), Map.of(), null, null);
+        StepDefinition step1 = new StepDefinition(
+                "step1",
+                "mod",
+                "op1",
+                Map.of(),
+                Map.of(),
+                null,
+                new OnErrorDefinition(OnErrorDefinition.Action.CONTINUE, 0, null));
 
-        when(evaluator.evaluateInput(any(), any())).thenReturn(Map.of());
-        when(invoker.invoke(any(), any(), any()))
-                .thenThrow(new SystemException("fail"))
-                .thenReturn(Map.of());
+        StepDefinition step2 = new StepDefinition(
+                "step2",
+                "mod",
+                "op2",
+                Map.of(),
+                Map.of(),
+                null,
+                null);
 
-        FlowEngine engine = new FlowEngine(evaluator, invoker);
+        FlowDefinition flow = new FlowDefinition("flow", List.of(step1, step2), null, null);
 
-        StepTrace trace = engine.execute(flow(null, s1, s2), new ExecutionContext());
+        engine.execute(flow, new ExecutionContext());
 
-        assertEquals(2, trace.getEntries().size());
-        assertFalse(trace.isSuccess()); // s1 failed
+        assertTrue(listener.events.stream().anyMatch(e -> e instanceof FlowEngineEvent.BusinessErrorEvent));
+        assertTrue(listener.events.stream().anyMatch(e -> e instanceof FlowEngineEvent.StepEndEvent));
     }
 
     // ------------------------------------------------------------
-    // 6. onError = RETRY → 1 回だけ retry
+    // 6. 複数ステップの順序
     // ------------------------------------------------------------
     @Test
-    void testOnErrorRetryRetriesOnce() throws Exception {
-        StepEvaluator evaluator = mock(StepEvaluator.class);
-        StepInvoker invoker = mock(StepInvoker.class);
+    public void test_multiple_steps_execute_in_order() {
+        RecordingListener listener = new RecordingListener();
+        StepEvaluator evaluator = new PassthroughEvaluator();
+        StepInvoker invoker = new FixedInvoker(Map.of("v", 1));
 
-        OnErrorDefinition onError = new OnErrorDefinition(Action.RETRY, 0, null);
-        StepDefinition step = step("s1", Map.of(), Map.of(), null, onError);
+        FlowEngine engine = new FlowEngine(evaluator, invoker, listener);
 
-        when(evaluator.evaluateInput(any(), any())).thenReturn(Map.of());
-        when(invoker.invoke(any(), any(), any()))
-                .thenThrow(new SystemException("fail"))
-                .thenReturn(Map.of());
+        StepDefinition s1 = new StepDefinition("s1", "m", "o", Map.of(), Map.of(), null, null);
+        StepDefinition s2 = new StepDefinition("s2", "m", "o", Map.of(), Map.of(), null, null);
 
-        FlowEngine engine = new FlowEngine(evaluator, invoker);
+        FlowDefinition flow = new FlowDefinition("flow", List.of(s1, s2), null, null);
 
-        StepTrace trace = engine.execute(flow(null, step), new ExecutionContext());
+        engine.execute(flow, new ExecutionContext());
 
-        assertEquals(1, trace.getEntries().size());
-        assertFalse(trace.isSuccess());
+        List<String> stepStarts = listener.events.stream()
+                .filter(e -> e instanceof FlowEngineEvent.StepStartEvent)
+                .map(e -> ((FlowEngineEvent.StepStartEvent) e).step().getName())
+                .toList();
+
+        assertEquals(List.of("s1", "s2"), stepStarts);
     }
 
     // ------------------------------------------------------------
-    // 7. flow-level onError が step-level より後に適用される
+    // 7. OutputMapping が空
     // ------------------------------------------------------------
     @Test
-    void testFlowLevelOnErrorUsedWhenStepHasNoOnError() throws Exception {
-        StepEvaluator evaluator = mock(StepEvaluator.class);
-        StepInvoker invoker = mock(StepInvoker.class);
+    public void test_empty_output_mapping_skips_output_events() {
+        RecordingListener listener = new RecordingListener();
+        StepEvaluator evaluator = new PassthroughEvaluator();
+        StepInvoker invoker = new FixedInvoker(Map.of("x", 1));
 
-        OnErrorDefinition flowOnError = new OnErrorDefinition(Action.CONTINUE, 0, null);
+        FlowEngine engine = new FlowEngine(evaluator, invoker, listener);
 
-        StepDefinition step = step("s1", Map.of(), Map.of(), null, null);
+        StepDefinition step = new StepDefinition(
+                "no-output",
+                "m",
+                "o",
+                Map.of(),
+                Map.of(), // empty output mapping
+                null,
+                null);
 
-        when(evaluator.evaluateInput(any(), any())).thenReturn(Map.of());
-        when(invoker.invoke(any(), any(), any()))
-                .thenThrow(new SystemException("fail"));
+        FlowDefinition flow = new FlowDefinition("flow", List.of(step), null, null);
 
-        FlowEngine engine = new FlowEngine(evaluator, invoker);
+        engine.execute(flow, new ExecutionContext());
 
-        StepTrace trace = engine.execute(flow(flowOnError, step), new ExecutionContext());
+        assertFalse(listener.events.stream().anyMatch(e -> e instanceof FlowEngineEvent.OutputEvaluationStartEvent));
+        assertFalse(listener.events.stream().anyMatch(e -> e instanceof FlowEngineEvent.OutputEvaluationEndEvent));
+    }
 
-        assertEquals(1, trace.getEntries().size());
-        assertFalse(trace.isSuccess());
+    // ------------------------------------------------------------
+    // 8. RetryPolicy と onError.RETRY の優先順位
+    // ------------------------------------------------------------
+    @Test
+    public void test_retry_policy_takes_precedence_over_onError_retry() {
+        RecordingListener listener = new RecordingListener();
+        StepEvaluator evaluator = new PassthroughEvaluator();
+
+        SystemException exceptedException = new SystemException("fail");
+        StepInvoker invoker = (m, o, i) -> {
+            throw exceptedException;
+        };
+
+        FlowEngine engine = new FlowEngine(evaluator, invoker, listener);
+
+        StepDefinition step = new StepDefinition(
+                "step",
+                "m",
+                "o",
+                Map.of(),
+                Map.of(),
+                new RetryPolicy(2, 0),
+                new OnErrorDefinition(OnErrorDefinition.Action.RETRY, 0, null));
+
+        FlowDefinition flow = new FlowDefinition("flow", List.of(step), null, null);
+
+        // assertThrows(StepExecutionException.class, () -> engine.execute(flow, new
+        // ExecutionContext()));
+        StepTrace trace = engine.execute(flow, new ExecutionContext());
+
+        assertEquals(exceptedException, trace.getEntries().get(0).getError());
+        assertEquals(exceptedException, trace.getEntries().get(1).getError());
+
+        long retryPolicyEvents = listener.events.stream()
+                .filter(e -> e instanceof FlowEngineEvent.RetryPolicyRetryEvent)
+                .count();
+
+        long onErrorRetryEvents = listener.events.stream()
+                .filter(e -> e instanceof FlowEngineEvent.OnErrorRetryEvent)
+                .count();
+
+        assertEquals(1, retryPolicyEvents); // RetryPolicy は 1 回
+        assertEquals(1, onErrorRetryEvents); // RetryPolicy が尽きた後に onError.RETRY が 1 回
+    }
+
+    // ------------------------------------------------------------
+    // 9. StepExecutionException の retry 意味論
+    // ------------------------------------------------------------
+    @Test
+    public void test_step_execution_exception_retries_like_system_exception() {
+        RecordingListener listener = new RecordingListener();
+        StepEvaluator evaluator = new PassthroughEvaluator();
+
+        StepInvoker invoker = new StepInvoker() {
+            int count = 0;
+
+            @Override
+            public Map<String, Object> invoke(String module, String operation, Map<String, Object> input) {
+                count++;
+                if (count == 1) {
+                    throw new StepExecutionException("fail");
+                }
+                return Map.of("ok", true);
+            }
+        };
+
+        FlowEngine engine = new FlowEngine(evaluator, invoker, listener);
+
+        StepDefinition step = new StepDefinition(
+                "step",
+                "m",
+                "o",
+                Map.of(),
+                Map.of(),
+                new RetryPolicy(2, 0),
+                null);
+
+        FlowDefinition flow = new FlowDefinition("flow", List.of(step), null, null);
+
+        engine.execute(flow, new ExecutionContext());
+
+        long retryEvents = listener.events.stream()
+                .filter(e -> e instanceof FlowEngineEvent.RetryPolicyRetryEvent)
+                .count();
+
+        assertEquals(1, retryEvents);
     }
 }

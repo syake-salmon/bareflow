@@ -9,72 +9,131 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 public class StepTraceTest {
-    private StepTraceEntry entry(
-            String name,
-            boolean success) {
+    private StepTraceEntry successEntry(int attempt) {
         return new StepTraceEntry(
-                name,
-                Map.of("before", 1),
-                Map.of("input", 2),
-                Map.of("output", 3),
-                success ? null : new RuntimeException("err"),
+                "step",
+                Map.of("a", 1),
+                Map.of("x", 10),
+                Map.of("y", 20),
+                null,
                 Instant.now(),
-                Instant.now());
+                Instant.now(),
+                attempt);
     }
 
+    private StepTraceEntry failureEntry(int attempt) {
+        return new StepTraceEntry(
+                "step",
+                Map.of("a", 1),
+                Map.of("x", 10),
+                null,
+                new RuntimeException("fail"),
+                Instant.now(),
+                Instant.now(),
+                attempt);
+    }
+
+    // ------------------------------------------------------------
+    // 1. record() でエントリが追加される
+    // ------------------------------------------------------------
     @Test
-    void testRecordAndGetEntries() {
+    public void testRecordAddsEntry() {
         StepTrace trace = new StepTrace();
+        trace.record(successEntry(1));
 
-        StepTraceEntry e1 = entry("step1", true);
-        StepTraceEntry e2 = entry("step2", false);
+        assertEquals(1, trace.getEntries().size());
+    }
 
-        trace.record(e1);
-        trace.record(e2);
+    // ------------------------------------------------------------
+    // 2. getEntries() が不変リストを返す
+    // ------------------------------------------------------------
+    @Test
+    public void testGetEntriesIsImmutable() {
+        StepTrace trace = new StepTrace();
+        trace.record(successEntry(1));
 
         List<StepTraceEntry> entries = trace.getEntries();
+        assertThrows(UnsupportedOperationException.class, () -> entries.add(successEntry(2)));
+    }
 
-        assertEquals(2, entries.size());
-        assertSame(e1, entries.get(0));
-        assertSame(e2, entries.get(1));
+    // ------------------------------------------------------------
+    // 3. isAllSuccessful()
+    // ------------------------------------------------------------
+    @Test
+    public void testIsAllSuccessful_AllSuccess() {
+        StepTrace trace = new StepTrace();
+        trace.record(successEntry(1));
+        trace.record(successEntry(2));
+
+        assertTrue(trace.isAllSuccessful());
     }
 
     @Test
-    void testGetEntriesIsImmutable() {
+    public void testIsAllSuccessful_HasFailure() {
         StepTrace trace = new StepTrace();
-        trace.record(entry("step1", true));
+        trace.record(successEntry(1));
+        trace.record(failureEntry(2));
 
-        List<StepTraceEntry> entries = trace.getEntries();
+        assertFalse(trace.isAllSuccessful());
+    }
 
-        assertThrows(UnsupportedOperationException.class, () -> {
-            entries.add(entry("x", true));
-        });
+    // ------------------------------------------------------------
+    // 4. isFinallySuccessful()
+    // ------------------------------------------------------------
+    @Test
+    public void testIsFinallySuccessful_Empty() {
+        StepTrace trace = new StepTrace();
+        assertFalse(trace.isFinallySuccessful());
     }
 
     @Test
-    void testIsSuccessTrueWhenAllEntriesSuccessful() {
+    public void testIsFinallySuccessful_LastSuccess() {
         StepTrace trace = new StepTrace();
+        trace.record(failureEntry(1));
+        trace.record(successEntry(2));
 
-        trace.record(entry("s1", true));
-        trace.record(entry("s2", true));
-
-        assertTrue(trace.isSuccess());
+        assertTrue(trace.isFinallySuccessful());
     }
 
     @Test
-    void testIsSuccessFalseWhenAnyEntryFails() {
+    public void testIsFinallySuccessful_LastFailure() {
         StepTrace trace = new StepTrace();
+        trace.record(successEntry(1));
+        trace.record(failureEntry(2));
 
-        trace.record(entry("s1", true));
-        trace.record(entry("s2", false));
+        assertFalse(trace.isFinallySuccessful());
+    }
 
-        assertFalse(trace.isSuccess());
+    // ------------------------------------------------------------
+    // 5. wasRetried()
+    // ------------------------------------------------------------
+    @Test
+    public void testWasRetried_False() {
+        StepTrace trace = new StepTrace();
+        trace.record(successEntry(1));
+
+        assertFalse(trace.wasRetried());
     }
 
     @Test
-    void testIsSuccessOnEmptyTrace() {
+    public void testWasRetried_True() {
         StepTrace trace = new StepTrace();
+        trace.record(successEntry(1));
+        trace.record(successEntry(2));
 
-        assertTrue(trace.isSuccess());
+        assertTrue(trace.wasRetried());
+    }
+
+    // ------------------------------------------------------------
+    // 6. getTotalAttempts()
+    // ------------------------------------------------------------
+    @Test
+    public void testGetTotalAttempts() {
+        StepTrace trace = new StepTrace();
+        trace.record(successEntry(1));
+        trace.record(failureEntry(2));
+        trace.record(successEntry(3));
+
+        assertEquals(3, trace.getTotalAttempts());
     }
 }
