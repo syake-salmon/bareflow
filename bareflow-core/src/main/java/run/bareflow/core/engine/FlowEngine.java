@@ -65,7 +65,8 @@ public class FlowEngine {
      * Returns a StepTrace representing the full execution history.
      */
     public StepTrace execute(final FlowDefinition flow, final ExecutionContext ctx) {
-        listener.onEvent(new FlowStartEvent(flow, Instant.now()));
+        Instant flowStartTime = Instant.now();
+        listener.onEvent(new FlowStartEvent(flow, flowStartTime));
 
         final StepTrace trace = new StepTrace();
 
@@ -73,7 +74,7 @@ public class FlowEngine {
             this.executeStepWithControl(flow, step, ctx, trace);
         }
 
-        listener.onEvent(new FlowEndEvent(flow, trace, Instant.now()));
+        listener.onEvent(new FlowEndEvent(flow, trace, flowStartTime, Instant.now()));
         return trace;
     }
 
@@ -100,32 +101,42 @@ public class FlowEngine {
 
         while (true) {
             attempts++;
-            listener.onEvent(new StepStartEvent(step, attempts));
+            Instant stepStartTime = Instant.now();
+            listener.onEvent(new StepStartEvent(step, attempts, stepStartTime));
 
             final Instant start = Instant.now();
             final Map<String, Object> before = ctx.snapshot();
 
             try {
                 // 1. Evaluate input
-                listener.onEvent(new InputEvaluationStartEvent(step, attempts));
+                Instant inputEvalStartTime = Instant.now();
+                listener.onEvent(new InputEvaluationStartEvent(step, attempts, inputEvalStartTime));
+
                 final Map<String, Object> evaluatedInput = this.evaluator.evaluateInput(step.getInput(), ctx);
-                listener.onEvent(new InputEvaluationEndEvent(step, attempts, evaluatedInput));
+
+                listener.onEvent(
+                        new InputEvaluationEndEvent(step, attempts, evaluatedInput, inputEvalStartTime, Instant.now()));
 
                 // 2. Invoke module operation
-                listener.onEvent(new InvokeStartEvent(step, attempts, evaluatedInput));
+                Instant invokeStartTime = Instant.now();
+                listener.onEvent(new InvokeStartEvent(step, attempts, evaluatedInput, invokeStartTime));
+
                 final Map<String, Object> rawOutput = this.invoker.invoke(step.getModule(), step.getOperation(),
                         evaluatedInput);
-                listener.onEvent(new InvokeEndEvent(step, attempts, rawOutput));
+
+                listener.onEvent(new InvokeEndEvent(step, attempts, rawOutput, invokeStartTime, Instant.now()));
 
                 // 3. Apply output mapping
                 if (!step.getOutput().isEmpty()) {
-                    listener.onEvent(new OutputEvaluationStartEvent(step, attempts, rawOutput));
+                    Instant outputEvalStartTime = Instant.now();
+                    listener.onEvent(new OutputEvaluationStartEvent(step, attempts, rawOutput, outputEvalStartTime));
 
                     final Map<String, Object> mappedOutput = this.evaluator.evaluateOutput(step.getOutput(), rawOutput,
                             ctx);
                     ctx.merge(mappedOutput);
 
-                    listener.onEvent(new OutputEvaluationEndEvent(step, attempts, mappedOutput));
+                    listener.onEvent(new OutputEvaluationEndEvent(step, attempts, mappedOutput, outputEvalStartTime,
+                            Instant.now()));
                 }
 
                 // 4. Record success
@@ -140,7 +151,7 @@ public class FlowEngine {
                         attempts);
                 trace.record(entry);
 
-                listener.onEvent(new StepEndEvent(entry));
+                listener.onEvent(new StepEndEvent(entry, stepStartTime, Instant.now()));
                 return; // success
 
             } catch (final BusinessException e) {

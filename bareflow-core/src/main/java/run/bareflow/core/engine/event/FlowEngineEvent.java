@@ -23,6 +23,7 @@ public sealed interface FlowEngineEvent {
         public record FlowEndEvent(
                         FlowDefinition flow,
                         StepTrace trace,
+                        Instant startTime,
                         Instant endTime) implements FlowEngineEvent {
         }
 
@@ -31,46 +32,58 @@ public sealed interface FlowEngineEvent {
         // ------------------------------------------------------------
         public record StepStartEvent(
                         StepDefinition step,
-                        int attempt) implements FlowEngineEvent {
+                        int attempt,
+                        Instant startTime) implements FlowEngineEvent {
         }
 
         public record InputEvaluationStartEvent(
                         StepDefinition step,
-                        int attempt) implements FlowEngineEvent {
+                        int attempt,
+                        Instant startTime) implements FlowEngineEvent {
         }
 
         public record InputEvaluationEndEvent(
                         StepDefinition step,
                         int attempt,
-                        Map<String, Object> evaluatedInput) implements FlowEngineEvent {
+                        Map<String, Object> evaluatedInput,
+                        Instant startTime,
+                        Instant endTime) implements FlowEngineEvent {
         }
 
         public record InvokeStartEvent(
                         StepDefinition step,
                         int attempt,
-                        Map<String, Object> evaluatedInput) implements FlowEngineEvent {
+                        Map<String, Object> evaluatedInput,
+                        Instant startTime) implements FlowEngineEvent {
         }
 
         public record InvokeEndEvent(
                         StepDefinition step,
                         int attempt,
-                        Map<String, Object> rawOutput) implements FlowEngineEvent {
+                        Map<String, Object> rawOutput,
+                        Instant startTime,
+                        Instant endTime) implements FlowEngineEvent {
         }
 
         public record OutputEvaluationStartEvent(
                         StepDefinition step,
                         int attempt,
-                        Map<String, Object> rawOutput) implements FlowEngineEvent {
+                        Map<String, Object> rawOutput,
+                        Instant startTime) implements FlowEngineEvent {
         }
 
         public record OutputEvaluationEndEvent(
                         StepDefinition step,
                         int attempt,
-                        Map<String, Object> mappedOutput) implements FlowEngineEvent {
+                        Map<String, Object> mappedOutput,
+                        Instant startTime,
+                        Instant endTime) implements FlowEngineEvent {
         }
 
         public record StepEndEvent(
-                        StepTraceEntry entry) implements FlowEngineEvent {
+                        StepTraceEntry entry,
+                        Instant startTime,
+                        Instant endTime) implements FlowEngineEvent {
         }
 
         // ------------------------------------------------------------
