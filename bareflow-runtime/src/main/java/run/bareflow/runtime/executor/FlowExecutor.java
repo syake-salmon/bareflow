@@ -10,6 +10,7 @@ import run.bareflow.core.resolver.FlowDefinitionResolver;
 import run.bareflow.core.trace.StepTrace;
 
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Executes a flow by resolving its definition and delegating to FlowEngine.
@@ -28,15 +29,18 @@ public class FlowExecutor {
     private final FlowDefinitionResolver definitionResolver;
     private final StepEvaluator evaluator;
     private final StepInvoker invoker;
+    private final Function<FlowExecutor, FlowEngine> engineFactory;
 
     public FlowExecutor(
             FlowDefinitionResolver definitionResolver,
             StepEvaluator evaluator,
-            StepInvoker invoker) {
+            StepInvoker invoker,
+            Function<FlowExecutor, FlowEngine> engineFactory) {
 
         this.definitionResolver = definitionResolver;
         this.evaluator = evaluator;
         this.invoker = invoker;
+        this.engineFactory = engineFactory;
     }
 
     /**
@@ -58,7 +62,7 @@ public class FlowExecutor {
             }
 
             // 3. Execute via FlowEngine
-            FlowEngine engine = new FlowEngine(evaluator, invoker);
+            FlowEngine engine = engineFactory.apply(this);
             StepTrace trace = engine.execute(definition, context);
 
             // 4. Return result
