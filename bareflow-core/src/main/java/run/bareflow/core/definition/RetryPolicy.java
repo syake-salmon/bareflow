@@ -17,25 +17,25 @@ package run.bareflow.core.definition;
  * attempt 3 → retry
  * attempt 4 → no further retry
  *
- * - backoffMillis defines the delay between retry attempts.
+ * - delayMillis defines the delay between retry attempts.
  *
  * RetryPolicy is optional at the step level.
  * If null, no automatic retry is performed.
  */
 public class RetryPolicy {
     private final int maxAttempts;
-    private final long backoffMillis;
+    private final long delayMillis;
 
-    public RetryPolicy(int maxAttempts, long backoffMillis) {
+    public RetryPolicy(int maxAttempts, long delayMillis) {
         this.maxAttempts = maxAttempts;
-        this.backoffMillis = backoffMillis;
+        this.delayMillis = delayMillis;
     }
 
     public int getMaxAttempts() {
         return maxAttempts;
     }
 
-    public long getBackoffMillis() {
-        return backoffMillis;
+    public long getDelayMillis() {
+        return delayMillis;
     }
 }
