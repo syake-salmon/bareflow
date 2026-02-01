@@ -1,5 +1,6 @@
 package run.bareflow.core.engine.event;
 
+import java.time.Instant;
 import java.util.Map;
 
 import run.bareflow.core.definition.FlowDefinition;
@@ -15,12 +16,14 @@ public sealed interface FlowEngineEvent {
         // Flow lifecycle
         // ------------------------------------------------------------
         public record FlowStartEvent(
-                        FlowDefinition flow) implements FlowEngineEvent {
+                        FlowDefinition flow,
+                        Instant startTime) implements FlowEngineEvent {
         }
 
         public record FlowEndEvent(
                         FlowDefinition flow,
-                        StepTrace trace) implements FlowEngineEvent {
+                        StepTrace trace,
+                        Instant endTime) implements FlowEngineEvent {
         }
 
         // ------------------------------------------------------------

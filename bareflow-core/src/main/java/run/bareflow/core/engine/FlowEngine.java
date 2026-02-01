@@ -65,7 +65,7 @@ public class FlowEngine {
      * Returns a StepTrace representing the full execution history.
      */
     public StepTrace execute(final FlowDefinition flow, final ExecutionContext ctx) {
-        listener.onEvent(new FlowStartEvent(flow));
+        listener.onEvent(new FlowStartEvent(flow, Instant.now()));
 
         final StepTrace trace = new StepTrace();
 
@@ -73,7 +73,7 @@ public class FlowEngine {
             this.executeStepWithControl(flow, step, ctx, trace);
         }
 
-        listener.onEvent(new FlowEndEvent(flow, trace));
+        listener.onEvent(new FlowEndEvent(flow, trace, Instant.now()));
         return trace;
     }
 
