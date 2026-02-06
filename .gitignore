@@ -4,5 +4,5 @@
 # Maven
 target/
 
-# Local Utilities
+# Copilot integration
 .copilot/
