@@ -170,6 +170,7 @@
                 <version>0.10.0</version>
                 <extensions>true</extensions>
                 <configuration>
+                    <publishingServerId>central</publishingServerId>
                     <autoPublish>true</autoPublish>
                 </configuration>
             </plugin>
