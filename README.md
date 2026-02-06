@@ -2,6 +2,10 @@
 
 [English](README.md) | [日本語](README_jp.md)
 
+![Build](https://github.com/syake-salmon/bareflow/actions/workflows/ci.yml/badge.svg)
+![Maven Central](https://img.shields.io/maven-central/v/run.bareflow/bareflow-core)
+![License](https://img.shields.io/github/license/syake-salmon/bareflow)
+
 # Table of Contents
 
 1. [Introduction](#1-introduction)  
