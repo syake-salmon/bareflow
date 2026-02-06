@@ -5,16 +5,16 @@
 # Table of Contents
 
 1. [Introduction](#1-introduction)
-2. [Core Principles](#2-core-principles)
-3. [Architecture Overview](#3-architecture-overview)
-4. [Core Concepts](#4-core-concepts)
-5. [Execution Model](#5-execution-model)
-6. [Runtime Components](#6-runtime-components)
-7. [YAML Flow Definitions](#7-yaml-flow-definitions)
-8. [Error Handling](#8-error-handling)
-9. [Tracing & Observability](#9-tracing--observability)
-10. [Extending BareFlow](#10-extending-bareflow)
-11. [License](#11-license)
+2. [Core Principles](#2-core-principlesコア原則)
+3. [Architecture Overview](#3-architecture-overviewアーキテクチャ概要)
+4. [Core Concepts](#4-core-conceptsコアコンセプト)
+5. [Execution Model](#5-execution-model実行モデル)
+6. [Runtime Components](#6-runtime-componentsランタイムコンポーネント)
+7. [YAML Flow Definitions](#7-yaml-flow-definitionsyamlフロー定義)
+8. [Error Handling](#8-error-handlingエラーハンドリング)
+9. [Tracing & Observability](#9-tracing--observabilityトレーシングと可観測性)
+10. [Extending BareFlow](#10-extending-bareflowbareflowの拡張)
+11. [License](#11-licenseライセンス)
 
 # 1. Introduction
 
@@ -857,7 +857,7 @@ Runtime のすべてのコンポーネントは差し替え可能です。
 Runtime は「実行環境の柔軟性」を提供し、  
 Core は「実行意味論の安定性」を保証します。
 
-# 7. YAML Flow Definitions（YAML フローディフィニション）
+# 7. YAML Flow Definitions（YAMLフロー定義）
 
 BareFlow は、フロー定義のために **最小限で透明な YAML DSL** を提供します。  
 この DSL は、BareFlow のコアモデル（FlowDefinition / StepDefinition / RetryPolicy / OnErrorDefinition）に  
