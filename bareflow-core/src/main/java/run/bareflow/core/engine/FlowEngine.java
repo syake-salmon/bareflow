@@ -150,7 +150,7 @@ public class FlowEngine {
                         attempts);
                 trace.record(entry);
 
-                listener.onEvent(new StepEndEvent(entry));
+                listener.onEvent(new StepEndEvent(step, attempts, start, Instant.now(), entry));
                 return; // success
 
             } catch (final BusinessException e) {

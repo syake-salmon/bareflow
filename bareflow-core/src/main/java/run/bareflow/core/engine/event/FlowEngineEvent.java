@@ -80,7 +80,10 @@ public sealed interface FlowEngineEvent {
                         Instant endTime) implements FlowEngineEvent {
         }
 
-        public record StepEndEvent(
+        public record StepEndEvent(StepDefinition step,
+                        int attempt,
+                        Instant startTime,
+                        Instant endTime,
                         StepTraceEntry entry) implements FlowEngineEvent {
         }
 
